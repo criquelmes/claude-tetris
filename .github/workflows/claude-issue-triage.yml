@@ -76,13 +76,27 @@ jobs:
             - Área (1 o más): "area: gameplay", "area: rendering", "area: ui", "area: ci"
             Si el issue es ambiguo y necesitas más información, agrega también "question".
 
-            Aplica con `gh issue edit ${{ github.event.issue.number }} --add-label "..."`.
+            Aplicar los labels es OBLIGATORIO y debe hacerse ANTES de publicar el comentario.
+            Aplícalos todos en un solo comando, por ejemplo:
+              `gh issue edit ${{ github.event.issue.number }} --add-label "bug,priority: medium,area: gameplay"`
             Si el evento es "edited", quita con `--remove-label` los labels de la lista anterior
             que ya no correspondan. Nunca quites labels que no estén en esta lista.
 
+            Luego confirma que quedaron aplicados con
+              `gh issue view ${{ github.event.issue.number }} --json labels`
+            Si falta alguno (tipo, prioridad o área), vuelve a ejecutar `gh issue edit` hasta que estén.
+
             ## Paso 3 — Diagnóstico
-            Escribe el diagnóstico en español, en Markdown, en el archivo /tmp/triage.md,
-            con esta estructura exacta (la primera línea es un marcador oculto obligatorio):
+            Escribe el diagnóstico en español en el archivo /tmp/triage.md, en formato Markdown
+            compatible con GitHub (GitHub Flavored Markdown) para que se renderice correctamente
+            en el comentario del issue:
+            - Encabezados con `##` / `###`, una línea en blanco antes y después de cada uno.
+            - Listas con `-` o `1.`, negritas con `**texto**`.
+            - Nombres de archivo, funciones y valores en `código inline`; fragmentos de código en
+              bloques con triple backtick y lenguaje (```js, ```html, ```css).
+            - Tablas en sintaxis GFM si ayudan a comparar opciones.
+            - No envuelvas todo el documento en un bloque de código ni uses HTML salvo el marcador inicial.
+            Usa esta estructura exacta (la primera línea es un marcador oculto obligatorio):
 
             <!-- claude-triage -->
             ## 🔍 Diagnóstico automático
@@ -117,3 +131,17 @@ jobs:
               `gh issue comment ${{ github.event.issue.number }} --edit-last --create-if-none --body-file /tmp/triage.md`
 
             No modifiques archivos del repositorio ni abras PRs.
+
+      - name: Verify labels were applied
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE: ${{ github.event.issue.number }}
+        run: |
+          labels=$(gh issue view "$ISSUE" --json labels --jq '[.labels[].name] | join(", ")')
+          echo "Labels en #$ISSUE: ${labels:-<ninguno>}"
+          for prefix in "priority: " "area: "; do
+            if ! gh issue view "$ISSUE" --json labels --jq '.labels[].name' | grep -q "^$prefix"; then
+              echo "::error::Falta un label '$prefix*' en el issue #$ISSUE"
+              exit 1
+            fi
+          done
