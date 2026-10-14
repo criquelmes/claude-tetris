@@ -15,6 +15,18 @@ const COLORS = [
   '#ffb74d', // L - orange
 ];
 
+// Darker variants of COLORS for light backgrounds (same index alignment)
+const COLORS_LIGHT = [
+  null,
+  '#00acc1', // I
+  '#f9a825', // O
+  '#8e24aa', // T
+  '#43a047', // S
+  '#e53935', // Z
+  '#1e88e5', // J
+  '#fb8c00', // L
+];
+
 const PIECES = [
   null,
   [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]], // I
@@ -39,6 +51,10 @@ const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
+const themeBtn = document.getElementById('theme-btn');
+
+// theme is a user preference, not game state: deliberately not reset by init()
+let theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 
@@ -158,18 +174,19 @@ function updateHUD() {
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
-  const color = COLORS[colorIndex];
+  const light = theme === 'light';
+  const color = (light ? COLORS_LIGHT : COLORS)[colorIndex];
   context.globalAlpha = alpha ?? 1;
   context.fillStyle = color;
   context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
   // highlight
-  context.fillStyle = 'rgba(255,255,255,0.12)';
+  context.fillStyle = light ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.12)';
   context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
   context.globalAlpha = 1;
 }
 
 function drawGrid() {
-  ctx.strokeStyle = '#22222e';
+  ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid').trim();
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath();
@@ -199,7 +216,7 @@ function draw() {
   for (let r = 0; r < current.shape.length; r++)
     for (let c = 0; c < current.shape[r].length; c++)
       if (current.shape[r][c])
-        drawBlock(ctx, current.x + c, gy + r, current.shape[r][c], BLOCK, 0.2);
+        drawBlock(ctx, current.x + c, gy + r, current.shape[r][c], BLOCK, theme === 'light' ? 0.3 : 0.2);
 
   // current piece
   for (let r = 0; r < current.shape.length; r++)
@@ -300,5 +317,29 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
+
+function applyTheme() {
+  const light = theme === 'light';
+  if (light) document.documentElement.dataset.theme = 'light';
+  else delete document.documentElement.dataset.theme;
+  themeBtn.textContent = light ? '🌙' : '☀';
+  const label = light ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro';
+  themeBtn.setAttribute('aria-label', label);
+  themeBtn.title = label;
+  themeBtn.setAttribute('aria-pressed', String(light));
+}
+
+themeBtn.addEventListener('click', () => {
+  theme = theme === 'light' ? 'dark' : 'light';
+  applyTheme();
+  try { localStorage.setItem('theme', theme); } catch (e) {}
+  // repaint now: the loop is not running while paused or on game over
+  draw();
+  drawNext();
+  // avoid Space re-triggering the button instead of hardDrop
+  themeBtn.blur();
+});
+
+applyTheme();
 
 init();
