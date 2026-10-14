@@ -5,8 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tetris</title>
   <link rel="stylesheet" href="style.css" />
+  <script>
+    // Aplica el tema guardado antes del primer pintado para evitar parpadeo
+    try {
+      if (localStorage.getItem('theme') === 'light') document.documentElement.dataset.theme = 'light';
+    } catch (e) {}
+  </script>
 </head>
 <body>
+  <button id="theme-btn" class="theme-btn" type="button" aria-pressed="false" aria-label="Cambiar a modo claro" title="Cambiar a modo claro">☀</button>
   <h1 class="title">TETRIS</h1>
 
   <div class="wrapper">
