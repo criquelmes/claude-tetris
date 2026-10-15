@@ -270,6 +270,8 @@ function loop(ts) {
     }
   }
   draw();
+  // endGame() may have run inside this frame; its cancelAnimationFrame can't stop the frame already executing
+  if (gameOver) return;
   animId = requestAnimationFrame(loop);
 }
 
