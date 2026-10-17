@@ -6,9 +6,12 @@
   <title>Tetris</title>
   <link rel="stylesheet" href="style.css" />
   <script>
-    // Aplica el tema guardado antes del primer pintado para evitar parpadeo
+    // Aplica el tema y la skin guardados antes del primer pintado para evitar parpadeo
     try {
       if (localStorage.getItem('theme') === 'light') document.documentElement.dataset.theme = 'light';
+      var savedSkin = localStorage.getItem('skin');
+      // game.js validates this against SKINS and falls back to 'retro'
+      if (savedSkin) document.documentElement.dataset.skin = savedSkin;
     } catch (e) {}
   </script>
 </head>
@@ -37,6 +40,16 @@
         <div class="panel-section">
           <span class="label">NEXT</span>
           <canvas id="next-canvas" width="120" height="120"></canvas>
+        </div>
+
+        <div class="panel-section">
+          <label class="label" for="skin-select">ESTILO</label>
+          <select id="skin-select" class="skin-select">
+            <option value="retro">Retro</option>
+            <option value="neon">Neón</option>
+            <option value="pastel">Pastel</option>
+            <option value="pixel">Pixel art</option>
+          </select>
         </div>
 
         <div class="panel-section controls">
