@@ -37,6 +37,22 @@
   --shadow: rgba(40, 40, 80, 0.2);
 }
 
+/* ---- Skins (after the themes so they win; coexist with data-theme) ---- */
+/* Neon: black board in both themes; --grid is read by drawGrid() in game.js */
+:root[data-skin="neon"] {
+  --grid: #14141f;
+}
+
+[data-skin="neon"] #board,
+[data-skin="neon"] #next-canvas {
+  background: #000;
+  border-color: #2a2a4a;
+}
+
+[data-skin="neon"] #board {
+  box-shadow: 0 0 40px rgba(0, 240, 255, 0.25);
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -118,6 +134,23 @@ body {
   border: 1px solid var(--border);
   background: var(--board-bg);
   border-radius: 4px;
+}
+
+/* ---- Selector de skin ---- */
+.skin-select {
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  border-radius: 3px;
+  padding: 4px 6px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--kbd-text);
+  cursor: pointer;
+}
+
+.skin-select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 /* ---- Controles ---- */
@@ -368,4 +401,113 @@ kbd {
 .start-hint {
   font-size: 13px;
   color: var(--muted);
+}
+
+/* ---- Pause menu ---- */
+.pause-box {
+  gap: 10px;
+}
+
+.pause-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.menu-btn {
+  width: 220px;
+  background: var(--accent);
+  color: var(--on-accent);
+  border: 2px solid transparent;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: background 0.15s;
+}
+
+.menu-btn:hover {
+  background: var(--accent-hover);
+}
+
+.menu-btn:focus {
+  outline: none;
+  border-color: var(--text);
+  background: var(--accent-hover);
+}
+
+.level-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: default;
+}
+
+.level-stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.level-value {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 18px;
+  min-width: 2ch;
+  text-align: center;
+}
+
+.step-btn {
+  background: transparent;
+  color: var(--on-accent);
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.step-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.pause-controls {
+  list-style: none;
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--board-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.pause-controls.hidden {
+  display: none;
+}
+
+.pause-controls li {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pause-controls li > span {
+  display: flex;
+  gap: 4px;
+  min-width: 80px;
+}
+
+.pause-hint {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-top: 4px;
 }

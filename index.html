@@ -6,9 +6,12 @@
   <title>Tetris</title>
   <link rel="stylesheet" href="style.css" />
   <script>
-    // Aplica el tema guardado antes del primer pintado para evitar parpadeo
+    // Aplica el tema y la skin guardados antes del primer pintado para evitar parpadeo
     try {
       if (localStorage.getItem('theme') === 'light') document.documentElement.dataset.theme = 'light';
+      var savedSkin = localStorage.getItem('skin');
+      // game.js validates this against SKINS and falls back to 'retro'
+      if (savedSkin) document.documentElement.dataset.skin = savedSkin;
     } catch (e) {}
   </script>
 </head>
@@ -39,14 +42,24 @@
           <canvas id="next-canvas" width="120" height="120"></canvas>
         </div>
 
+        <div class="panel-section">
+          <label class="label" for="skin-select">ESTILO</label>
+          <select id="skin-select" class="skin-select">
+            <option value="retro">Retro</option>
+            <option value="neon">Neón</option>
+            <option value="pastel">Pastel</option>
+            <option value="pixel">Pixel art</option>
+          </select>
+        </div>
+
         <div class="panel-section controls">
           <span class="label">CONTROLS</span>
           <ul>
             <li><kbd>←</kbd><kbd>→</kbd> mover</li>
-            <li><kbd>↑</kbd> rotar</li>
+            <li><kbd>↑</kbd><kbd>X</kbd> rotar</li>
             <li><kbd>↓</kbd> bajar</li>
             <li><kbd>Space</kbd> caída</li>
-            <li><kbd>P</kbd> pausa</li>
+            <li><kbd>P</kbd><kbd>Esc</kbd> pausa</li>
           </ul>
         </div>
       </aside>
@@ -77,6 +90,32 @@
         <p class="start-hint">Pulsa <kbd>Enter</kbd> o Jugar</p>
         <button id="play-btn" type="button">Jugar</button>
         <button id="start-clear-btn" class="clear-records-btn" type="button">Borrar records</button>
+      </div>
+    </div>
+
+    <div id="pause-menu" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+      <div class="overlay-box pause-box">
+        <p id="pause-title" class="pause-title">PAUSA</p>
+        <button id="resume-btn" class="menu-btn" type="button">Reanudar</button>
+        <button id="pause-restart-btn" class="menu-btn" type="button">Reiniciar</button>
+        <button id="controls-btn" class="menu-btn" type="button" aria-expanded="false" aria-controls="pause-controls">Ver controles</button>
+        <ul id="pause-controls" class="pause-controls hidden">
+          <li><span><kbd>←</kbd><kbd>→</kbd></span> mover</li>
+          <li><span><kbd>↑</kbd><kbd>X</kbd></span> rotar</li>
+          <li><span><kbd>↓</kbd></span> bajar</li>
+          <li><span><kbd>Space</kbd></span> caída</li>
+          <li><span><kbd>P</kbd><kbd>Esc</kbd></span> pausa / reanudar</li>
+        </ul>
+        <div id="start-level-item" class="menu-btn level-item" tabindex="0" role="spinbutton"
+             aria-label="Nivel inicial" aria-valuenow="1">
+          <span>Nivel inicial</span>
+          <span class="level-stepper">
+            <button id="start-level-dec" class="step-btn" type="button" tabindex="-1" aria-label="Bajar nivel inicial">◀</button>
+            <span id="start-level-value" class="level-value">1</span>
+            <button id="start-level-inc" class="step-btn" type="button" tabindex="-1" aria-label="Subir nivel inicial">▶</button>
+          </span>
+        </div>
+        <p class="pause-hint">↑/↓ navegar · Enter elegir · ←/→ nivel<br />El nivel inicial se aplica al reiniciar</p>
       </div>
     </div>
   </div>
