@@ -42,6 +42,14 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Sistema de puntuación** clásico de Tetris (100 / 300 / 500 / 800 multiplicado por nivel).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
+- **Tabla de records local** (guardada en `localStorage`): top 5 con nombre del jugador, puntos, líneas y combo; se muestra en la pantalla de inicio y en el Game Over, resalta tu puntuación si entra en el top e incluye el **mejor combo** y las **líneas máximas** de todas tus partidas. Un botón **Borrar records** permite reiniciarla.
+- **Pantalla de inicio**: el juego espera a que pulses `Enter` o el botón **Jugar**.
+
+### Records
+
+- Al terminar una partida, si tu puntuación entra en el top 5 aparece un campo para escribir tu nombre (máx. 12 caracteres, por defecto «Jugador»). Pulsa `Enter` o **Guardar**.
+- Un **combo** cuenta las piezas consecutivas que, al fijarse, eliminan al menos una línea; se reinicia cuando una pieza no limpia ninguna.
+- Los datos se guardan en la clave `records` de `localStorage` como `{ top: [{ name, score, lines, combo, date }], bestCombo, maxLines }`. Si el navegador bloquea el almacenamiento, el juego funciona igual pero sin persistir los records.
 
 ---
 
@@ -85,6 +93,7 @@ Después abre `http://localhost:8000` en el navegador.
 | `↓`       | Soft drop (bajar más rápido)      |
 | `Espacio` | Hard drop (caída instantánea)     |
 | `P`       | Pausar / reanudar                 |
+| `Enter`   | Empezar (pantalla de inicio) / guardar nombre (Game Over) |
 
 ---
 
@@ -98,7 +107,8 @@ Define la estructura visual:
 
 - Un `<canvas id="board">` de **300 × 600** píxeles donde se renderiza el tablero.
 - Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza y la lista de controles.
-- Un overlay para los estados **PAUSA** y **GAME OVER**.
+- Un overlay para los estados **PAUSA** y **GAME OVER** (este último con la tabla de records y el campo de nombre).
+- Una pantalla de inicio (`#start-screen`) con la tabla de records.
 
 ### 2. `style.css`
 
@@ -121,6 +131,8 @@ Contiene toda la lógica del juego. A grandes rasgos:
 ### Flujo del juego
 
 ```
+showStartScreen()                   → tablero inicial + tabla de records; espera Enter / Jugar
+        ↓
 init()
   ├─ createBoard()                  → matriz vacía
   ├─ next = randomPiece()
@@ -136,7 +148,7 @@ init()
    keydown → mover / rotar / soft-drop / hard-drop / pausa
 ```
 
-Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara `endGame()` y se muestra el overlay de **Game Over**.
+Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara `endGame()` y se muestra el overlay de **Game Over** con la tabla de records.
 
 ---
 
