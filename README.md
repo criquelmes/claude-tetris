@@ -51,7 +51,7 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - Al terminar una partida, si tu puntuación entra en el top 5 aparece un campo para escribir tu nombre (máx. 12 caracteres, por defecto «Jugador»). Pulsa `Enter` o **Guardar**.
 - Un **combo** cuenta las piezas consecutivas que, al fijarse, eliminan al menos una línea; se reinicia cuando una pieza no limpia ninguna.
 - Los datos se guardan en la clave `records` de `localStorage` como `{ top: [{ name, score, lines, combo, date }], bestCombo, maxLines }`. Si el navegador bloquea el almacenamiento, el juego funciona igual pero sin persistir los records.
-- **Skins visuales** seleccionables desde el panel lateral: **Retro** (bloques planos, estilo original), **Neón** (fondo negro y brillo), **Pastel** (colores suaves y esquinas redondeadas) y **Pixel art** (textura de píxeles con biselado). El cambio se aplica al instante, funciona con el modo claro/oscuro y la preferencia se guarda en `localStorage`.
+- **Estilos visuales** seleccionables desde el panel lateral: **Retro** (bloques planos, estilo original), **Neón** (fondo negro y brillo), **Pastel** (colores suaves y esquinas redondeadas) y **Pixel art** (textura de píxeles con biselado). El cambio se aplica al instante, funciona con el modo claro/oscuro y la preferencia se guarda en `localStorage`.
 
 ---
 
@@ -190,7 +190,7 @@ Algunos parámetros fáciles de tunear en `game.js`:
 | `ROWS`         | Filas del tablero                        | `20`                  |
 | `BLOCK`        | Tamaño en píxeles de cada celda          | `30`                  |
 | `COLORS`       | Paleta de colores por tipo de pieza      | 7 colores             |
-| `SKINS`        | Skins: paletas por pieza y función `drawCell` de cada una | `retro`, `neon`, `pastel`, `pixel` |
+| `SKINS`        | Estilos visuales: paletas por pieza y función `drawCell` de cada una | `retro`, `neon`, `pastel`, `pixel` |
 | `LINE_SCORES`  | Puntos por 1, 2, 3 o 4 líneas eliminadas | `[0,100,300,500,800]` |
 | `dropInterval` | Velocidad inicial de caída en ms         | `1000`                |
 
