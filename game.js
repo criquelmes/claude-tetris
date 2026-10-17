@@ -56,7 +56,7 @@ const themeBtn = document.getElementById('theme-btn');
 // theme is a user preference, not game state: deliberately not reset by init()
 let theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
 
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, combo, maxCombo, lastRecord;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -126,6 +126,7 @@ function clearLines() {
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
     updateHUD();
   }
+  updateCombo(cleared);
 }
 
 function ghostY() {
@@ -241,6 +242,7 @@ function endGame() {
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
   overlay.classList.remove('hidden');
+  showGameOverRecords();
 }
 
 function togglePause() {
@@ -284,7 +286,11 @@ function init() {
   gameOver = false;
   dropInterval = 1000;
   dropAccum = 0;
+  combo = 0;
+  maxCombo = 0;
+  lastRecord = null;
   lastTime = performance.now();
+  hideGameOverRecords();
   next = randomPiece();
   spawn();
   updateHUD();
@@ -294,6 +300,7 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
+  if (recordsKeydown(e)) return;
   if (e.code === 'KeyP') { togglePause(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
@@ -344,4 +351,224 @@ themeBtn.addEventListener('click', () => {
 
 applyTheme();
 
-init();
+// ---- Local records (top 5 + best combo + max lines) ----
+
+const RECORDS_KEY = 'records';
+const RECORDS_MAX = 5;
+const DEFAULT_NAME = 'Jugador';
+
+const startScreen = document.getElementById('start-screen');
+const startRecordsTable = document.getElementById('start-records-table');
+const playBtn = document.getElementById('play-btn');
+const startClearBtn = document.getElementById('start-clear-btn');
+const gameoverRecords = document.getElementById('gameover-records');
+const gameoverStats = document.getElementById('gameover-stats');
+const gameoverRecordsTable = document.getElementById('gameover-records-table');
+const gameoverClearBtn = document.getElementById('gameover-clear-btn');
+const newRecordMsg = document.getElementById('new-record-msg');
+const nameForm = document.getElementById('name-form');
+const nameInput = document.getElementById('name-input');
+
+function emptyRecords() {
+  return { top: [], bestCombo: 0, maxLines: 0 };
+}
+
+function loadRecords() {
+  try {
+    const data = JSON.parse(localStorage.getItem(RECORDS_KEY));
+    if (!data || typeof data !== 'object') return emptyRecords();
+    const num = v => (Number.isFinite(v) && v > 0 ? Math.floor(v) : 0);
+    const top = Array.isArray(data.top) ? data.top
+      .filter(r => r && typeof r === 'object' && Number.isFinite(r.score))
+      .map(r => ({
+        name: String(r.name ?? DEFAULT_NAME).slice(0, 12),
+        score: num(r.score),
+        lines: num(r.lines),
+        combo: num(r.combo),
+        date: String(r.date ?? ''),
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, RECORDS_MAX) : [];
+    return { top, bestCombo: num(data.bestCombo), maxLines: num(data.maxLines) };
+  } catch (e) {
+    return emptyRecords();
+  }
+}
+
+// In-memory copy is the source of truth for the UI; storage is best-effort (may be blocked or full).
+// Persistent data across games, so deliberately not reset by init().
+let records = loadRecords();
+// UI state: true while the start screen waits for Enter / Jugar
+let onStartScreen = false;
+
+function saveRecords() {
+  try { localStorage.setItem(RECORDS_KEY, JSON.stringify(records)); } catch (e) {}
+}
+
+function qualifiesForTop(s) {
+  if (s <= 0) return false;
+  return records.top.length < RECORDS_MAX || s > records.top[records.top.length - 1].score;
+}
+
+// Inserts entry keeping descending order; ties go after existing entries
+function insertRecord(entry) {
+  let i = records.top.findIndex(r => entry.score > r.score);
+  if (i === -1) i = records.top.length;
+  records.top.splice(i, 0, entry);
+  records.top = records.top.slice(0, RECORDS_MAX);
+}
+
+function updateCombo(cleared) {
+  if (cleared) {
+    combo++;
+    if (combo > maxCombo) maxCombo = combo;
+  } else {
+    combo = 0;
+  }
+}
+
+// Builds the table with DOM APIs only: player names are user data, never innerHTML
+function renderRecords(container, highlight) {
+  container.replaceChildren();
+  if (!records.top.length) {
+    const empty = document.createElement('p');
+    empty.className = 'records-empty';
+    empty.textContent = 'Sin records todavía';
+    container.appendChild(empty);
+  } else {
+    const table = document.createElement('table');
+    table.className = 'records-table';
+    const head = table.createTHead().insertRow();
+    for (const h of ['#', 'Nombre', 'Puntos', 'Lín.', 'Combo']) {
+      const th = document.createElement('th');
+      th.textContent = h;
+      head.appendChild(th);
+    }
+    const body = table.createTBody();
+    records.top.forEach((r, i) => {
+      const row = body.insertRow();
+      if (r === highlight) row.className = 'highlight';
+      if (r.date) row.title = new Date(r.date).toLocaleString('es');
+      for (const v of [i + 1, r.name, r.score.toLocaleString(), r.lines, r.combo]) {
+        row.insertCell().textContent = v;
+      }
+    });
+    container.appendChild(table);
+  }
+  const stats = document.createElement('p');
+  stats.className = 'records-stats';
+  stats.textContent = `Mejor combo: ${records.bestCombo} · Máx. líneas: ${records.maxLines}`;
+  container.appendChild(stats);
+}
+
+function renderAllRecords() {
+  renderRecords(gameoverRecordsTable, lastRecord);
+  renderRecords(startRecordsTable, null);
+}
+
+function nameFormOpen() {
+  return gameOver && lastRecord !== null && !nameForm.classList.contains('hidden');
+}
+
+// Hook called at the end of endGame()
+function showGameOverRecords() {
+  records.bestCombo = Math.max(records.bestCombo, maxCombo);
+  records.maxLines = Math.max(records.maxLines, lines);
+
+  // A qualifying score is saved right away under the default name, so restarting or closing
+  // the tab never loses it; the name form only renames that entry
+  const qualifies = qualifiesForTop(score);
+  if (qualifies) {
+    lastRecord = { name: DEFAULT_NAME, score, lines, combo: maxCombo, date: new Date().toISOString() };
+    insertRecord(lastRecord);
+    nameInput.value = DEFAULT_NAME;
+  }
+  saveRecords();
+
+  gameoverStats.textContent = `Líneas: ${lines} · Combo máx.: ${maxCombo}`;
+  newRecordMsg.classList.toggle('hidden', !qualifies);
+  nameForm.classList.toggle('hidden', !qualifies);
+  renderAllRecords();
+  gameoverRecords.classList.remove('hidden');
+}
+
+// Hook called from init()
+function hideGameOverRecords() {
+  gameoverRecords.classList.add('hidden');
+  nameForm.classList.add('hidden');
+  newRecordMsg.classList.add('hidden');
+  nameInput.blur();
+}
+
+function saveRecordName() {
+  if (!lastRecord) return;
+  lastRecord.name = nameInput.value.trim().slice(0, 12) || DEFAULT_NAME;
+  saveRecords();
+  nameForm.classList.add('hidden');
+  nameInput.blur();
+  renderAllRecords();
+}
+
+function clearRecords() {
+  if (!confirm('¿Borrar todos los records? Esta acción no se puede deshacer.')) return;
+  records = emptyRecords();
+  // the current game's entry was erased too: nothing left to rename or highlight
+  lastRecord = null;
+  nameForm.classList.add('hidden');
+  newRecordMsg.classList.add('hidden');
+  try { localStorage.removeItem(RECORDS_KEY); } catch (e) {}
+  renderAllRecords();
+}
+
+function showStartScreen() {
+  // init() builds a fresh board/piece so draw() (also used by the theme toggle) has state to paint,
+  // then the loop is stopped until the player starts
+  init();
+  cancelAnimationFrame(animId);
+  draw();
+  onStartScreen = true;
+  renderAllRecords();
+  startScreen.classList.remove('hidden');
+}
+
+function startGame() {
+  if (!onStartScreen) return;
+  onStartScreen = false;
+  startScreen.classList.add('hidden');
+  playBtn.blur();
+  init();
+}
+
+// Document-level keydown hook. Returns true when the event was consumed and must not reach the game controls
+function recordsKeydown(e) {
+  const enter = e.code === 'Enter' || e.code === 'NumpadEnter';
+  if (onStartScreen) {
+    if (enter) {
+      e.preventDefault();
+      startGame();
+    }
+    return true;
+  }
+  // Enter saves the name even when the field isn't focused (it isn't auto-focused, so keys
+  // pressed as the game ends can't overwrite the name)
+  if (enter && nameFormOpen() && document.activeElement !== restartBtn) {
+    e.preventDefault();
+    saveRecordName();
+    return true;
+  }
+  return false;
+}
+
+// Typing in the name field never reaches the game controls
+nameInput.addEventListener('keydown', e => e.stopPropagation());
+
+nameForm.addEventListener('submit', e => {
+  e.preventDefault();
+  saveRecordName();
+});
+
+playBtn.addEventListener('click', startGame);
+startClearBtn.addEventListener('click', () => { clearRecords(); startClearBtn.blur(); });
+gameoverClearBtn.addEventListener('click', () => { clearRecords(); gameoverClearBtn.blur(); });
+
+showStartScreen();
