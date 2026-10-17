@@ -37,6 +37,22 @@
   --shadow: rgba(40, 40, 80, 0.2);
 }
 
+/* ---- Skins (after the themes so they win; coexist with data-theme) ---- */
+/* Neon: black board in both themes; --grid is read by drawGrid() in game.js */
+:root[data-skin="neon"] {
+  --grid: #14141f;
+}
+
+[data-skin="neon"] #board,
+[data-skin="neon"] #next-canvas {
+  background: #000;
+  border-color: #2a2a4a;
+}
+
+[data-skin="neon"] #board {
+  box-shadow: 0 0 40px rgba(0, 240, 255, 0.25);
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -118,6 +134,23 @@ body {
   border: 1px solid var(--border);
   background: var(--board-bg);
   border-radius: 4px;
+}
+
+/* ---- Selector de skin ---- */
+.skin-select {
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  border-radius: 3px;
+  padding: 4px 6px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--kbd-text);
+  cursor: pointer;
+}
+
+.skin-select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 /* ---- Controles ---- */
