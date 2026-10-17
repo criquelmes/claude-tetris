@@ -52,11 +52,33 @@ const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeBtn = document.getElementById('theme-btn');
+const pauseMenu = document.getElementById('pause-menu');
+const resumeBtn = document.getElementById('resume-btn');
+const pauseRestartBtn = document.getElementById('pause-restart-btn');
+const controlsBtn = document.getElementById('controls-btn');
+const pauseControls = document.getElementById('pause-controls');
+const startLevelItem = document.getElementById('start-level-item');
+const startLevelValue = document.getElementById('start-level-value');
+const startLevelDec = document.getElementById('start-level-dec');
+const startLevelInc = document.getElementById('start-level-inc');
+// keyboard-navigable entries of the pause menu, in visual order
+const pauseMenuItems = [resumeBtn, pauseRestartBtn, controlsBtn, startLevelItem];
+
+const MIN_START_LEVEL = 1;
+const MAX_START_LEVEL = 10;
 
 // theme is a user preference, not game state: deliberately not reset by init()
 let theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
 
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, combo, maxCombo, lastRecord;
+// startLevel is also a preference: chosen in the pause menu, applied on the next init()
+let startLevel = MIN_START_LEVEL;
+try {
+  const saved = parseInt(localStorage.getItem('startLevel'), 10);
+  if (saved >= MIN_START_LEVEL && saved <= MAX_START_LEVEL) startLevel = saved;
+} catch (e) {}
+
+// baseLevel: the startLevel snapshot this game began with (changing the preference mid-game must not affect it)
+let board, current, next, score, lines, level, baseLevel, paused, gameOver, lastTime, dropAccum, dropInterval, animId, combo, maxCombo, lastRecord;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -122,11 +144,15 @@ function clearLines() {
   if (cleared) {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
-    level = Math.floor(lines / 10) + 1;
-    dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+    level = Math.floor(lines / 10) + baseLevel;
+    dropInterval = dropIntervalFor(level);
     updateHUD();
   }
   updateCombo(cleared);
+}
+
+function dropIntervalFor(lvl) {
+  return Math.max(100, 1000 - (lvl - 1) * 90);
 }
 
 function ghostY() {
@@ -249,13 +275,13 @@ function togglePause() {
   if (gameOver) return;
   paused = !paused;
   if (!paused) {
+    closePauseMenu();
+    // dropAccum is kept on purpose: zeroing it would let pause-spamming hold a piece in the air
     lastTime = performance.now();
     loop(lastTime);
   } else {
     cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    overlay.classList.remove('hidden');
+    openPauseMenu();
   }
 }
 
@@ -281,10 +307,11 @@ function init() {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  baseLevel = startLevel;
+  level = baseLevel;
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  dropInterval = dropIntervalFor(level);
   dropAccum = 0;
   combo = 0;
   maxCombo = 0;
@@ -295,13 +322,18 @@ function init() {
   spawn();
   updateHUD();
   overlay.classList.add('hidden');
+  closePauseMenu();
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
 document.addEventListener('keydown', e => {
   if (recordsKeydown(e)) return;
-  if (e.code === 'KeyP') { togglePause(); return; }
+  if (handlePauseMenuKey(e)) return;
+  if (e.code === 'KeyP' || e.code === 'Escape') {
+    if (!e.repeat) togglePause();
+    return;
+  }
   if (paused || gameOver) return;
   switch (e.code) {
     case 'ArrowLeft':
@@ -347,6 +379,7 @@ themeBtn.addEventListener('click', () => {
   drawNext();
   // avoid Space re-triggering the button instead of hardDrop
   themeBtn.blur();
+  if (isPauseMenuOpen()) resumeBtn.focus({ preventScroll: true });
 });
 
 applyTheme();
@@ -570,5 +603,113 @@ nameForm.addEventListener('submit', e => {
 playBtn.addEventListener('click', startGame);
 startClearBtn.addEventListener('click', () => { clearRecords(); startClearBtn.blur(); });
 gameoverClearBtn.addEventListener('click', () => { clearRecords(); gameoverClearBtn.blur(); });
+
+
+// ---- Pause menu ----
+
+function isPauseMenuOpen() {
+  // `paused` is the single source of truth; the menu is shown exactly while paused
+  return paused && !gameOver;
+}
+
+function openPauseMenu() {
+  renderStartLevel();
+  pauseMenu.classList.remove('hidden');
+  resumeBtn.focus({ preventScroll: true });
+}
+
+function closePauseMenu() {
+  pauseMenu.classList.add('hidden');
+  setControlsVisible(false);
+  // drop focus so Space/Enter go to the game instead of re-clicking a menu button
+  if (pauseMenu.contains(document.activeElement)) document.activeElement.blur();
+}
+
+function setControlsVisible(visible) {
+  pauseControls.classList.toggle('hidden', !visible);
+  controlsBtn.setAttribute('aria-expanded', String(visible));
+  controlsBtn.textContent = visible ? 'Ocultar controles' : 'Ver controles';
+}
+
+function renderStartLevel() {
+  startLevelValue.textContent = startLevel;
+  startLevelItem.setAttribute('aria-valuemin', String(MIN_START_LEVEL));
+  startLevelItem.setAttribute('aria-valuemax', String(MAX_START_LEVEL));
+  startLevelItem.setAttribute('aria-valuenow', String(startLevel));
+  startLevelDec.disabled = startLevel <= MIN_START_LEVEL;
+  startLevelInc.disabled = startLevel >= MAX_START_LEVEL;
+}
+
+function setStartLevel(value) {
+  startLevel = Math.min(MAX_START_LEVEL, Math.max(MIN_START_LEVEL, value));
+  try { localStorage.setItem('startLevel', String(startLevel)); } catch (e) {}
+  renderStartLevel();
+}
+
+function focusPauseMenuItem(delta) {
+  let idx = pauseMenuItems.indexOf(document.activeElement);
+  if (startLevelItem.contains(document.activeElement)) idx = pauseMenuItems.indexOf(startLevelItem);
+  idx = idx === -1 ? 0 : (idx + delta + pauseMenuItems.length) % pauseMenuItems.length;
+  pauseMenuItems[idx].focus({ preventScroll: true });
+}
+
+// Returns true when the open pause menu consumed the key, so the game never sees it.
+function handlePauseMenuKey(e) {
+  if (!isPauseMenuOpen()) return false;
+  const onLevel = startLevelItem.contains(document.activeElement);
+  switch (e.code) {
+    case 'KeyP':
+    case 'Escape':
+      e.preventDefault();
+      if (!e.repeat) togglePause();
+      break;
+    case 'Tab':
+      // keep focus trapped inside the modal menu
+      e.preventDefault();
+      focusPauseMenuItem(e.shiftKey ? -1 : 1);
+      break;
+    case 'ArrowUp':
+      e.preventDefault();
+      focusPauseMenuItem(-1);
+      break;
+    case 'ArrowDown':
+      e.preventDefault();
+      focusPauseMenuItem(1);
+      break;
+    case 'ArrowLeft':
+    case 'ArrowRight':
+      e.preventDefault();
+      if (onLevel) setStartLevel(startLevel + (e.code === 'ArrowRight' ? 1 : -1));
+      break;
+    case 'Enter':
+    case 'NumpadEnter':
+    case 'Space':
+      if (onLevel) {
+        // cycle 1..10 so Enter alone can reach any level
+        e.preventDefault();
+        setStartLevel(startLevel >= MAX_START_LEVEL ? MIN_START_LEVEL : startLevel + 1);
+      } else if (!pauseMenu.contains(document.activeElement)) {
+        // nothing in the menu is focused: don't scroll or activate something outside it
+        e.preventDefault();
+      }
+      // otherwise the focused menu button activates natively (its click handler)
+      break;
+  }
+  return true;
+}
+
+resumeBtn.addEventListener('click', () => { if (paused) togglePause(); });
+pauseRestartBtn.addEventListener('click', init);
+controlsBtn.addEventListener('click', () => {
+  setControlsVisible(pauseControls.classList.contains('hidden'));
+});
+startLevelDec.addEventListener('click', () => {
+  setStartLevel(startLevel - 1);
+  startLevelItem.focus({ preventScroll: true });
+});
+startLevelInc.addEventListener('click', () => {
+  setStartLevel(startLevel + 1);
+  startLevelItem.focus({ preventScroll: true });
+});
 
 showStartScreen();

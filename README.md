@@ -41,7 +41,8 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Vista previa** de la siguiente pieza.
 - **Sistema de puntuación** clásico de Tetris (100 / 300 / 500 / 800 multiplicado por nivel).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
-- **Pausa** y **Game Over** con opción de reinicio.
+- **Menú de pausa** (`P` o `Esc`): reanudar, reiniciar la partida sin recargar, ver los controles y elegir el **nivel inicial** (1–10) de la próxima partida. La preferencia se guarda en `localStorage`.
+- **Game Over** con opción de reinicio.
 - **Tabla de records local** (guardada en `localStorage`): top 5 con nombre del jugador, puntos, líneas y combo; se muestra en la pantalla de inicio y en el Game Over, resalta tu puntuación si entra en el top e incluye el **mejor combo** y las **líneas máximas** de todas tus partidas. Un botón **Borrar records** permite reiniciarla.
 - **Pantalla de inicio**: el juego espera a que pulses `Enter` o el botón **Jugar**.
 
@@ -92,8 +93,10 @@ Después abre `http://localhost:8000` en el navegador.
 | `↑` o `X` | Rotar la pieza en sentido horario |
 | `↓`       | Soft drop (bajar más rápido)      |
 | `Espacio` | Hard drop (caída instantánea)     |
-| `P`       | Pausar / reanudar                 |
+| `P` / `Esc` | Abrir el menú de pausa / reanudar |
 | `Enter`   | Empezar (pantalla de inicio) / guardar nombre (Game Over) |
+
+Dentro del menú de pausa: `↑` / `↓` para navegar, `Enter` para elegir y `←` / `→` para cambiar el nivel inicial. Mientras el menú está abierto, las teclas del juego se ignoran.
 
 ---
 
@@ -107,7 +110,7 @@ Define la estructura visual:
 
 - Un `<canvas id="board">` de **300 × 600** píxeles donde se renderiza el tablero.
 - Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza y la lista de controles.
-- Un overlay para los estados **PAUSA** y **GAME OVER** (este último con la tabla de records y el campo de nombre).
+- Un overlay de **GAME OVER** (con la tabla de records y el campo de nombre) y un menú de **PAUSA** independiente (`#pause-menu`).
 - Una pantalla de inicio (`#start-screen`) con la tabla de records.
 
 ### 2. `style.css`
@@ -125,7 +128,7 @@ Contiene toda la lógica del juego. A grandes rasgos:
 - **Game loop** (`loop`): basado en `requestAnimationFrame`, acumula el tiempo transcurrido y baja la pieza una fila cuando se supera `dropInterval`.
 - **Limpieza de líneas** (`clearLines`): recorre el tablero de abajo hacia arriba; cada fila completa se elimina y se inserta una vacía en la cima.
 - **Puntuación**: usa la tabla clásica `[0, 100, 300, 500, 800]` multiplicada por el nivel actual; el hard drop suma 2 puntos por celda recorrida y el soft drop 1 punto por fila.
-- **Nivel y velocidad**: el nivel sube cada 10 líneas; la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos.
+- **Nivel y velocidad**: la partida empieza en el nivel inicial elegido y sube un nivel cada 10 líneas (`floor(lines / 10) + nivel inicial`); la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos.
 - **Ghost piece** (`ghostY`): proyecta la posición final de la pieza actual hacia abajo y la dibuja con `globalAlpha = 0.2`.
 
 ### Flujo del juego
